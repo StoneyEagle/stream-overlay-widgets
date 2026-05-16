@@ -1,19 +1,22 @@
 {
-	"name": "stream-widgets",
-	"type": "module",
-	"version": "1.0.0",
-	"description": "Collection of stream overlay widgets",
-	"scripts": {
-		"lint": "eslint .",
-		"lint:fix": "eslint --fix ./src"
-	},
-	"dependencies": {},
-	"devDependencies": {
-		"@antfu/eslint-config": "^4.14.1",
-		"@vue/compiler-sfc": "^3.5.18",
-		"eslint": "^9.31.0",
-		"eslint-plugin-format": "^1.0.1",
-		"eslint-plugin-vuejs-accessibility": "^2.4.1",
-		"typescript": "^5.8.3"
-	}
+  "name": "stream-widgets",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Collection of stream overlay widgets",
+  "scripts": {
+  "lint": "eslint .",
+  "lint:fix": "eslint --fix ./src"
+  },
+  "dependencies": {},
+  "devDependencies": {
+  "@antfu/eslint-config": "^4.14.1",
+  "@vue/compiler-sfc": "^3.5.18",
+  "eslint": "^9.31.0",
+  "eslint-plugin-format": "^1.0.1",
+  "eslint-plugin-vuejs-accessibility": "^2.4.1",
+  "typescript": "^5.8.3"
+  },
+  "overrides": {
+  "glob": "^10.5.0"
+  }
 }
