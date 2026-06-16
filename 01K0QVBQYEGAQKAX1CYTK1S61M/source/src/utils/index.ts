@@ -70,6 +70,40 @@ function parseHTML(html: string): DocumentFragment {
 	return template.content;
 }
 
+const emoteHostPatterns = [
+	'static-cdn.jtvnw.net/emoticons/',
+	'cdn.betterttv.net/emote/',
+	'cdn.7tv.app/emote/',
+	'cdn.frankerfacez.com/',
+];
+
+function isEmoteImg(element: Element): boolean {
+	if (element.tagName.toLowerCase() !== 'img') return false;
+	const src = element.getAttribute('src') || '';
+	return emoteHostPatterns.some(pattern => src.includes(pattern));
+}
+
+function hasUserSizing(element: Element): boolean {
+	const style = element.getAttribute('style') || '';
+	return element.hasAttribute('width')
+		|| element.hasAttribute('height')
+		|| /(?:^|;)\s*(?:width|height|max-height|max-width)\s*:/.test(style);
+}
+
+function createEmoteImgNode(element: Element, messageId: string, index: number): MessageNode {
+	const src = element.getAttribute('src') || '';
+	const alt = element.getAttribute('alt') || '';
+	const style = element.getAttribute('style') || undefined;
+	const sizeClass = hasUserSizing(element) ? 'w-auto mx-1 inline' : 'h-20 w-auto mx-1 inline';
+
+	return {
+		type: 'emote',
+		id: `${messageId}-emote-${index}`,
+		classes: ['message-emote', sizeClass],
+		attribs: { src, alt, ...(style && { style }) },
+	};
+}
+
 function elementToMessageNode(element: Element, messageId: string, index: number): MessageNode {
 	if (element.nodeType === 3) {
 		return {
@@ -79,6 +113,9 @@ function elementToMessageNode(element: Element, messageId: string, index: number
 			text: element.textContent || '',
 		};
 	}
+
+	if (isEmoteImg(element))
+		return createEmoteImgNode(element, messageId, index);
 
 	const tagName = element.tagName.toLowerCase();
 	const node: MessageNode = {
@@ -165,16 +202,28 @@ function createMentionNode(messageId: string, fragment: Fragment, index: number)
 	};
 }
 
-function createEmoteNode(messageId: string, fragment: Fragment, index: number): MessageNode {
+function createEmoteNode(messageId: string, fragment: Fragment, index: number, emoteOnly = false): MessageNode {
+	const isGigantified = fragment.emote?.is_gigantified;
+	let sizeClass = 'h-7 w-auto mx-1 inline';
+	let src = fragment.emote?.urls['2'];
+
+	if (isGigantified) {
+		sizeClass = 'h-96 w-auto mx-1 inline';
+		src = fragment.emote?.urls['3'] || fragment.emote?.urls['2'];
+	} else if (emoteOnly) {
+		sizeClass = 'h-[72px] w-auto mx-1 inline';
+		src = fragment.emote?.urls['3'] || fragment.emote?.urls['2'];
+	}
+
 	return {
 		type: 'emote',
 		id: `${messageId}-emote-${index}`,
 		classes: [
 			'message-emote',
-			fragment.emote?.is_gigantified ? 'h-96 w-auto mx-1 inline' : 'h-7 w-auto mx-1 inline',
+			sizeClass,
 		],
 		attribs: {
-			src: fragment.emote?.is_gigantified ? fragment.emote?.urls['3'] || fragment.emote?.urls['2'] : fragment.emote?.urls['2'],
+			src,
 			alt: fragment.text,
 		},
 	};
@@ -209,11 +258,35 @@ function createOgPreviewNode(messageId: string, fragment: Fragment, index: numbe
 	};
 }
 
+function createSpotifyCardNode(messageId: string, fragment: Fragment, index: number): MessageNode {
+	return {
+		type: 'spotify-card',
+		id: `${messageId}-spotify-${index}`,
+		classes: ['message-spotify-card', 'w-full'],
+		attribs: {
+			title: fragment.html_preview?.title,
+			description: fragment.html_preview?.description,
+			image: fragment.html_preview?.image_url,
+			url: fragment.text,
+		},
+		children: [],
+	};
+}
+
+export function isEmoteOnlyMessage(message: ChatMessage): boolean {
+	if (!message.fragments || message.fragments.length === 0) return false;
+	return message.fragments.every(f =>
+		f.type === 'emote' || (f.type === 'text' && f.text.trim() === ''),
+	);
+}
+
 export function createMessageNode(message: ChatMessage): MessageNode {
+	const emoteOnly = isEmoteOnlyMessage(message);
+
 	const nodes: MessageNode = {
 		type: 'rootNode',
 		id: message.id,
-		classes: ['message'],
+		classes: emoteOnly ? ['message', 'emote-only'] : ['message'],
 		children: [],
 	};
 
@@ -229,7 +302,10 @@ export function createMessageNode(message: ChatMessage): MessageNode {
 				nodes.children?.push(createMentionNode(message.id, fragment, index));
 			}
 			else if (fragment.type === 'emote') {
-				nodes.children?.push(createEmoteNode(message.id, fragment, index));
+				nodes.children?.push(createEmoteNode(message.id, fragment, index, emoteOnly));
+			}
+			else if (fragment.type === 'spotify') {
+				nodes.children?.push(createSpotifyCardNode(message.id, fragment, index));
 			}
 			else if (fragment.type === 'url') {
 				nodes.children?.push(createUrlNode(message.id, fragment, index));

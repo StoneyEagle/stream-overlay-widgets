@@ -94,6 +94,7 @@ export enum Type {
 	Mention = 'mention',
 	URL = 'url',
 	HTML = 'html',
+	Spotify = 'spotify',
 }
 
 export interface OGMetadata {

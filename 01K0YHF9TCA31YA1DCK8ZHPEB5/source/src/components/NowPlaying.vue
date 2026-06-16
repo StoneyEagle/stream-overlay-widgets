@@ -25,6 +25,24 @@ onUnmounted(() => {
 });
 
 watch(spotifyState, (newValue, oldValue) => {
+	// Run the like animation whenever the current track becomes liked. This is
+	// independent of playback — a favorite shouldn't disturb the clock below.
+	if (newValue.is_liked && !oldValue?.is_liked) {
+		showLikeAnimation();
+	}
+
+	// Only events that actually redefine the current time should touch the
+	// clock. A metadata-only update (e.g. favoriting) carries the same track,
+	// play state and progress as before, so we leave the timer ticking instead
+	// of snapping it back to the now-stale progress_ms.
+	const playbackChanged
+		= oldValue?.item?.id !== newValue.item?.id
+			|| oldValue?.is_playing !== newValue.is_playing
+			|| oldValue?.progress_ms !== newValue.progress_ms;
+
+	if (!playbackChanged)
+		return;
+
 	clearInterval(interval.value);
 	clearTimeout(timeout.value);
 
@@ -43,19 +61,16 @@ watch(spotifyState, (newValue, oldValue) => {
 		addShineEffect();
 	}
 
-	console.log('Track liked:', newValue.is_liked);
-	if (newValue.is_liked) {
-		showLikeAnimation();
-	}
-
 	interval.value = setInterval(() => {
 		time.value = spotifyState.value && time.value ? time.value + 100 : 0;
 	}, 100);
 });
 
-const width = computed(() => spotifyState.value.item && time.value
-	? (time.value / spotifyState.value.item?.duration_ms) * 100
-	: 0);
+const width = computed(() => {
+	if (!spotifyState.value.item || !time.value) return 0;
+	const pct = (time.value / spotifyState.value.item.duration_ms) * 100;
+	return Math.min(pct, 100);
+});
 
 // Add shine effect to the widget
 function addShineEffect() {
@@ -179,13 +194,13 @@ function showLikeAnimation() {
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%) scale(0);
-	color: hsl(from var(--color-400) h s 80%);
+	color: #ef4444;
 	opacity: 0;
 	z-index: 10;
 	transition:
 		transform 0.5s,
 		opacity 0.5s;
-	filter: drop-shadow(0 0 8px var(--color-400));
+	filter: drop-shadow(0 0 8px #ef4444);
 }
 
 .now-playing-card.like-active::before {
