@@ -37,9 +37,9 @@ export interface WidgetConnection {
 const widgetSocketInstances: Record<string, WidgetConnection> = {};
 
 // --- Visual status indicator (shared across all widgets on the page) ---
-// Subtle corner dot that reflects connection state, plus a body-level
-// desaturation when disconnected for >5s. Non-disruptive: chat/feather/etc
-// remain readable; only the color saturation drops to signal "stale".
+// When disconnected for >5s the whole page desaturates to signal "stale".
+// Non-disruptive: chat/feather/etc remain readable; only the color
+// saturation drops. (No corner dot — it read as a stream glitch on camera.)
 const STATUS_STYLE_ID = 'widget-socket-status-style';
 const DISCONNECTED_CLASS = 'widget-disconnected';
 const DISCONNECT_GRACE_MS = 5_000;
@@ -51,49 +51,18 @@ const ensureStatusStyle = () => {
 	const style = document.createElement('style');
 	style.id = STATUS_STYLE_ID;
 	style.textContent = `
-		.widget-status-dot {
-			position: fixed;
-			bottom: 8px;
-			right: 8px;
-			width: 6px;
-			height: 6px;
-			border-radius: 50%;
-			background: rgba(60, 220, 100, 0.55);
-			pointer-events: none;
-			z-index: 2147483647;
-			transition: background 600ms ease, opacity 600ms ease, transform 600ms ease;
-		}
 		body.${DISCONNECTED_CLASS} {
 			filter: saturate(0.4) opacity(0.85);
 			transition: filter 1.2s ease;
 		}
-		body.${DISCONNECTED_CLASS} .widget-status-dot {
-			background: rgba(220, 70, 70, 0.95);
-			animation: widget-status-pulse 2.4s ease-in-out infinite;
-		}
-		@keyframes widget-status-pulse {
-			0%, 100% { opacity: 0.5; transform: scale(1); }
-			50% { opacity: 1; transform: scale(1.5); }
-		}
 	`;
 	document.head.appendChild(style);
-};
-
-const ensureStatusDot = () => {
-	if (typeof document === 'undefined' || !document.body)
-		return;
-	if (!document.querySelector('.widget-status-dot')) {
-		const dot = document.createElement('div');
-		dot.className = 'widget-status-dot';
-		document.body.appendChild(dot);
-	}
 };
 
 const setStatus = (connected: boolean) => {
 	if (typeof document === 'undefined' || !document.body)
 		return;
 	ensureStatusStyle();
-	ensureStatusDot();
 	if (connected) {
 		if (disconnectedTimer) {
 			clearTimeout(disconnectedTimer);
